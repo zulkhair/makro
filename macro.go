@@ -11,10 +11,12 @@ import (
 
 var (
 	user32                       = windows.NewLazyDLL("user32.dll")
+	kernel32                     = windows.NewLazyDLL("kernel32.dll")
 	procGetWindowThreadProcessId = user32.NewProc("GetWindowThreadProcessId")
 	procFindWindowW              = user32.NewProc("FindWindowW")
 	procSetForegroundWindow      = user32.NewProc("SetForegroundWindow")
 	procSendInput                = user32.NewProc("SendInput")
+	procGetCurrentThreadId       = kernel32.NewProc("GetCurrentThreadId")
 )
 
 type KEYBDINPUT struct {
@@ -82,11 +84,11 @@ func findWindowByPID(pid int) uintptr {
 
 func sendSpecialKey(vk uint16) {
 	// Get the foreground window's thread
-	foregroundWindow := user32.NewProc("GetForegroundWindow").Call()
+	foregroundWindow, _, _ := user32.NewProc("GetForegroundWindow").Call()
 	foregroundThreadId, _, _ := user32.NewProc("GetWindowThreadProcessId").Call(foregroundWindow, 0)
 
-	// Get the target window's thread
-	currentThreadId, _, _ := user32.NewProc("GetCurrentThreadId").Call()
+	// Use the correct procedure from kernel32
+	currentThreadId, _, _ := procGetCurrentThreadId.Call()
 
 	// Attach the threads
 	user32.NewProc("AttachThreadInput").Call(currentThreadId, foregroundThreadId, 1)
